@@ -28,6 +28,11 @@
       <button class="nav" data-view="history">◷ Lịch sử sự kiện</button>
       <p>CẤU HÌNH</p>
       <button class="nav" data-view="settings">⚙ Cấu hình chung</button>
+      <button class="nav" data-view="users">♙ Người dùng</button>
+      <button class="nav" data-view="permissions">◇ Phân quyền</button>
+      <p>HỆ THỐNG</p>
+      <button class="nav" data-view="backup">▣ Sao lưu dữ liệu</button>
+      <button class="nav" data-view="about">ⓘ Giới thiệu</button>
     </nav>
 
     <div class="connection">
@@ -35,7 +40,7 @@
       <small>Firebase: <span id="fbStatus">Đang kết nối...</span></small><br>
       <small>Cập nhật: <span id="lastSync">--</span></small>
     </div>
-    <div class="version">v2.1.0</div>
+    <div class="version">v3.0.0</div>
   </aside>
 
   <main>
@@ -71,11 +76,23 @@
               <option value="offline">Offline</option>
               <option value="alert">Có cảnh báo</option>
             </select>
+            <button id="advancedFilterBtn" class="primary secondary">⌁ Lọc nâng cao</button>
             <button id="addDeviceBtn" class="primary">＋ Thêm thiết bị</button>
           </div>
 
+          <div class="advanced-panel hidden" id="advancedPanel">
+            <label>L1<select id="line1Filter"><option value="all">Tất cả</option><option value="ok">OK</option><option value="bad">Đứt</option></select></label>
+            <label>L2<select id="line2Filter"><option value="all">Tất cả</option><option value="ok">OK</option><option value="bad">Đứt</option></select></label>
+            <label>L3<select id="line3Filter"><option value="all">Tất cả</option><option value="ok">OK</option><option value="bad">Đứt</option></select></label>
+            <label>Nguồn<select id="powerFilter"><option value="all">Tất cả</option><option value="ok">Có nguồn</option><option value="bad">Mất nguồn</option></select></label>
+            <button id="clearFilters" class="outline">Xóa lọc</button>
+          </div>
+
           <div class="card table-card">
-            <div class="card-title"><h3>DANH SÁCH THIẾT BỊ (<span id="deviceCountTitle">0</span>)</h3></div>
+            <div class="card-title split">
+              <h3>DANH SÁCH THIẾT BỊ (<span id="deviceCountTitle">0</span>)</h3>
+              <button id="exportDevices" class="outline">Xuất JSON</button>
+            </div>
             <div id="emptyState" class="empty-state hidden">Chưa có dữ liệu tại Firebase path <b>/Device</b>.</div>
             <div class="table-wrap">
               <table>
@@ -85,12 +102,21 @@
                 <tbody id="deviceRows"></tbody>
               </table>
             </div>
+            <div class="pagination">
+              <span id="pageInfo">Hiển thị 0 thiết bị</span>
+              <div>
+                <button id="prevPage" class="action-btn">‹</button>
+                <span id="pageButtons"></span>
+                <button id="nextPage" class="action-btn">›</button>
+                <select id="pageSize"><option value="8">8 / trang</option><option value="16">16 / trang</option><option value="32">32 / trang</option></select>
+              </div>
+            </div>
           </div>
 
           <div class="bottom-grid">
             <div class="card"><h3>THỐNG KÊ TRẠNG THÁI THIẾT BỊ</h3><div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend"><p><span class="dot green"></span>Online <b id="lgOnline">0</b></p><p><span class="dot gray"></span>Offline <b id="lgOffline">0</b></p><p><span class="dot red"></span>Cảnh báo <b id="lgAlert">0</b></p></div></div></div>
             <div class="card"><h3>THIẾT BỊ CẢNH BÁO GẦN NHẤT</h3><div id="recentAlerts" class="list-empty">Chưa có cảnh báo</div></div>
-            <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký</button></div>
+            <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký local</button></div>
           </div>
         </section>
 
@@ -106,12 +132,16 @@
     <section class="page" id="view-groups"><div class="card"><h3>NHÓM THIẾT BỊ</h3><div id="groupList"></div></div></section>
     <section class="page" id="view-alerts"><div class="card"><h3>DANH SÁCH CẢNH BÁO</h3><div id="alertList"></div></div></section>
     <section class="page" id="view-history"><div class="card"><h3>LỊCH SỬ SỰ KIỆN</h3><div id="historyList"></div></div></section>
-    <section class="page" id="view-settings"><div class="card"><h3>CẤU HÌNH HỆ THỐNG</h3><p>Realtime Database hiện yêu cầu người dùng đã xác thực. Web sẽ tự đăng nhập Firebase Anonymous Auth trước khi đọc/ghi dữ liệu.</p><pre id="rulesHint">{
+    <section class="page" id="view-settings"><div class="card"><h3>CẤU HÌNH HỆ THỐNG</h3><p>Realtime Database hiện yêu cầu người dùng đã xác thực. Web tự đăng nhập Firebase Anonymous Auth trước khi đọc/ghi dữ liệu.</p><pre id="rulesHint">{
   "rules": {
     ".read": "auth != null",
     ".write": "auth != null"
   }
-}</pre><p class="note">Trong Firebase Console cần bật Authentication → Sign-in method → Anonymous.</p></div></section>
+}</pre><p class="note">Cần bật Firebase Console → Authentication → Sign-in method → Anonymous. Nếu ESP32 đọc/ghi trực tiếp, firmware cũng cần cơ chế xác thực tương ứng.</p></div></section>
+    <section class="page" id="view-users"><div class="card"><h3>NGƯỜI DÙNG</h3><div class="info-grid"><div><b>admin</b><small>Quản trị hệ thống web</small></div><div><b>ESP32</b><small>Thiết bị gửi trạng thái qua Firebase</small></div></div></div></section>
+    <section class="page" id="view-permissions"><div class="card"><h3>PHÂN QUYỀN</h3><p>Hiện web dùng Anonymous Auth để thỏa rule <b>auth != null</b>. Khi vận hành chính thức nên chuyển sang Email/Password hoặc custom token để phân quyền admin và thiết bị.</p></div></section>
+    <section class="page" id="view-backup"><div class="card"><h3>SAO LƯU DỮ LIỆU</h3><p>Xuất toàn bộ dữ liệu đang đọc được từ Firebase thành file JSON.</p><button id="backupAll" class="primary">Tải bản sao lưu JSON</button></div></section>
+    <section class="page" id="view-about"><div class="card"><h3>GIỚI THIỆU</h3><p>Hệ thống giám sát đứt dây điện 3 pha dùng ESP32, Firebase Realtime Database và web dashboard Netlify.</p><p>Phiên bản: <b>v3.0.0</b></p></div></section>
   </main>
 
   <div class="toast" id="toast"></div>

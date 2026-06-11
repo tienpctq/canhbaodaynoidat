@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, update, set, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDHDU9dCyYz7Ch9WHGfgE7pTUytqghjrHA",
@@ -18,9 +18,13 @@ const auth = getAuth(firebaseApp);
 const db = getDatabase(firebaseApp);
 
 let devices = {};
+let remoteLogs = [];
+let localLogs = [];
 let selectedId = null;
-let logs = [];
+let activeDetailTab = "overview";
 let lastSnapshot = "";
+let currentPage = 1;
+let pageSize = 8;
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = () => new Date().toLocaleString("vi-VN");
@@ -64,19 +68,29 @@ function notify(text, type = "ok") {
   notify.timer = window.setTimeout(() => toast.className = "toast", 2600);
 }
 
-function addLog(text, type = "info") {
-  const item = { text, type, time: fmtTime() };
-  logs.unshift(item);
-  logs = logs.slice(0, 50);
-  localStorage.setItem("evnLogs", JSON.stringify(logs));
-  renderLogs();
+function loadLocalLogs() {
+  try {
+    localLogs = JSON.parse(localStorage.getItem("evnLogs") || "[]");
+  } catch {
+    localLogs = [];
+  }
 }
 
-function loadLogs() {
+function saveLocalLog(item) {
+  localLogs.unshift(item);
+  localLogs = localLogs.slice(0, 80);
+  localStorage.setItem("evnLogs", JSON.stringify(localLogs));
+}
+
+async function addLog(text, type = "info") {
+  const item = { text, type, time: fmtTime(), ts: Date.now() };
+  saveLocalLog(item);
+  renderLogs();
+
   try {
-    logs = JSON.parse(localStorage.getItem("evnLogs") || "[]");
+    await push(ref(db, "Logs"), item);
   } catch {
-    logs = [];
+    // Local logs remain available when rules do not allow writing Logs yet.
   }
 }
 
@@ -97,6 +111,10 @@ function syncGroupFilter() {
   filter.value = [...filter.options].some((o) => o.value === current) ? current : "all";
 }
 
+function matchTriState(value, filterValue) {
+  return filterValue === "all" || (filterValue === "ok" && value) || (filterValue === "bad" && !value);
+}
+
 function filteredDevices() {
   const q = $("searchBox").value.trim().toLowerCase();
   const status = $("statusFilter").value;
@@ -107,7 +125,11 @@ function filteredDevices() {
     const matchQ = !q || text.includes(q);
     const matchGroup = group === "all" || String(d.GROUP || "Chưa phân nhóm") === group;
     const matchStatus = status === "all" || (status === "online" && isOnline(d)) || (status === "offline" && !isOnline(d)) || (status === "alert" && hasAlert(d));
-    return matchQ && matchGroup && matchStatus;
+    const matchLines = matchTriState(phaseOk(d, "LINE1"), $("line1Filter").value)
+      && matchTriState(phaseOk(d, "LINE2"), $("line2Filter").value)
+      && matchTriState(phaseOk(d, "LINE3"), $("line3Filter").value)
+      && matchTriState(powerOk(d), $("powerFilter").value);
+    return matchQ && matchGroup && matchStatus && matchLines;
   });
 }
 
@@ -134,14 +156,31 @@ function renderStats(list) {
   $("donut").style.background = `conic-gradient(var(--green) 0deg ${onlineDeg}deg,var(--gray) ${onlineDeg}deg ${onlineDeg + offDeg}deg,var(--red) ${onlineDeg + offDeg}deg 360deg)`;
 }
 
+function renderPagination(total) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = total ? (currentPage - 1) * pageSize + 1 : 0;
+  const end = Math.min(currentPage * pageSize, total);
+  $("pageInfo").textContent = `Hiển thị ${start} - ${end} trong ${total} thiết bị`;
+  $("prevPage").disabled = currentPage <= 1;
+  $("nextPage").disabled = currentPage >= totalPages;
+
+  $("pageButtons").innerHTML = Array.from({ length: totalPages }, (_, idx) => idx + 1)
+    .filter((page) => totalPages <= 5 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+    .map((page, idx, arr) => `${idx && page - arr[idx - 1] > 1 ? '<span class="page-gap">...</span>' : ''}<button class="action-btn ${page === currentPage ? "active-page" : ""}" data-page="${page}">${page}</button>`)
+    .join("");
+}
+
 function renderTable() {
   const allEntries = Object.entries(devices);
   const list = filteredDevices();
   renderStats(allEntries);
   syncGroupFilter();
   $("emptyState").classList.toggle("hidden", allEntries.length !== 0);
+  renderPagination(list.length);
 
-  $("deviceRows").innerHTML = list.map(([id, d]) => {
+  const pageItems = list.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  $("deviceRows").innerHTML = pageItems.map(([id, d]) => {
     const l1 = phaseOk(d, "LINE1");
     const l2 = phaseOk(d, "LINE2");
     const l3 = phaseOk(d, "LINE3");
@@ -171,6 +210,7 @@ function renderTable() {
 
 function selectDevice(id) {
   selectedId = id;
+  activeDetailTab = "overview";
   renderDetail();
   renderTable();
 }
@@ -186,41 +226,51 @@ function renderDetail() {
   const l2 = phaseOk(d, "LINE2");
   const l3 = phaseOk(d, "LINE3");
   const power = powerOk(d);
+  const tabButtons = `
+    <div class="tabs">
+      <button class="${activeDetailTab === "overview" ? "active" : ""}" data-detail-tab="overview">Tổng quan</button>
+      <button class="${activeDetailTab === "config" ? "active" : ""}" data-detail-tab="config">Cấu hình</button>
+      <button class="${activeDetailTab === "history" ? "active" : ""}" data-detail-tab="history">Lịch sử</button>
+    </div>`;
+
+  const overview = `
+    <h4>TRẠNG THÁI 3 PHA</h4>
+    <div class="phase-grid">
+      <div class="phase-box ${l1 ? "" : "bad"}">L1<b>${lineText(l1)}</b></div>
+      <div class="phase-box ${l2 ? "" : "bad"}">L2<b>${lineText(l2)}</b></div>
+      <div class="phase-box ${l3 ? "" : "bad"}">L3<b>${lineText(l3)}</b></div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-box">🔌<br>Nguồn LOOP<b class="${power ? "" : "bad-text"}">${sourceText(power)}</b></div>
+      <div class="mini-box">🔔<br>Còi cảnh báo<b>${buzzerOn(d) ? "BẬT" : "TẮT"}</b></div>
+      <div class="mini-box">⏱<br>Phản hồi<b>${isOk(d.RESPONSE) ? "ĐÃ NHẬN" : "CHỜ"}</b></div>
+    </div>`;
+
+  const config = `
+    <div class="config-list">
+      <div class="config-row"><label>Số điện thoại</label><input id="cfgPhone" value="${esc(d.SDT || "")}"><button data-save-field="SDT">💾</button></div>
+      <div class="config-row"><label>Nội dung SMS</label><input id="cfgSms" value="${esc(d.SMS || "")}"><button data-save-field="SMS">💾</button></div>
+      <div class="config-row"><label>Chu kỳ gửi (giây)</label><input id="cfgInterval" type="number" min="5" value="${esc(d.SEND_INTERVAL || 30)}"><button data-save-field="SEND_INTERVAL">💾</button></div>
+      <div class="config-row"><label>Vị trí</label><input id="cfgLocation" value="${esc(d.VITRI || "")}"><button data-save-field="VITRI">💾</button></div>
+      <button class="outline save-wide" id="saveAllCfg">💾 Lưu cấu hình</button>
+    </div>`;
+
+  const history = logsForDevice(selectedId).slice(0, 12).map((log) => `<div class="history-item"><b>${esc(log.text)}</b><small>${esc(log.time || "")}</small></div>`).join("") || '<div class="list-empty">Chưa có lịch sử cho thiết bị này</div>';
+  const content = activeDetailTab === "config" ? config : activeDetailTab === "history" ? history : overview;
 
   $("detailContent").innerHTML = `
     <div class="device-detail">
       <div class="device-title"><h2>${esc(selectedId)}</h2>${statusBadge(isOnline(d))}</div>
       <p>${esc(d.VITRI || "--")}</p>
       <p class="updated">Cập nhật: ${esc(d.LAST_UPDATE || d.lastSeen || "--")}</p>
-      <div class="tabs"><button class="active">Tổng quan</button><button>Cấu hình</button><button>Lịch sử</button></div>
-
-      <h4>TRẠNG THÁI 3 PHA</h4>
-      <div class="phase-grid">
-        <div class="phase-box ${l1 ? "" : "bad"}">L1<b>${lineText(l1)}</b></div>
-        <div class="phase-box ${l2 ? "" : "bad"}">L2<b>${lineText(l2)}</b></div>
-        <div class="phase-box ${l3 ? "" : "bad"}">L3<b>${lineText(l3)}</b></div>
-      </div>
-
-      <div class="mini-grid">
-        <div class="mini-box">🔌<br>Nguồn LOOP<b class="${power ? "" : "bad-text"}">${sourceText(power)}</b></div>
-        <div class="mini-box">🔔<br>Còi cảnh báo<b>${buzzerOn(d) ? "BẬT" : "TẮT"}</b></div>
-        <div class="mini-box">⏱<br>Phản hồi<b>${isOk(d.RESPONSE) ? "ĐÃ NHẬN" : "CHỜ"}</b></div>
-      </div>
-
-      <div class="config-list">
-        <div class="config-row"><label>Số điện thoại</label><input id="cfgPhone" value="${esc(d.SDT || "")}"><button data-save-field="SDT">💾</button></div>
-        <div class="config-row"><label>Nội dung SMS</label><input id="cfgSms" value="${esc(d.SMS || "")}"><button data-save-field="SMS">💾</button></div>
-        <div class="config-row"><label>Chu kỳ gửi (giây)</label><input id="cfgInterval" type="number" min="5" value="${esc(d.SEND_INTERVAL || 30)}"><button data-save-field="SEND_INTERVAL">💾</button></div>
-        <div class="config-row"><label>Vị trí</label><input id="cfgLocation" value="${esc(d.VITRI || "")}"><button data-save-field="VITRI">💾</button></div>
-      </div>
-
+      ${tabButtons}
+      ${content}
       <h4>ĐIỀU KHIỂN THIẾT BỊ</h4>
       <div class="control-grid">
         <button class="warn" data-test-id="${esc(selectedId)}">⚡<br>Test cảnh báo</button>
         <button class="buzz" data-buzz-id="${esc(selectedId)}">🔕<br>${buzzerOn(d) ? "Tắt còi" : "Bật còi"}</button>
         <button class="reset" data-reset-id="${esc(selectedId)}">↻<br>Reset thiết bị</button>
       </div>
-      <button class="outline save-wide" id="saveAllCfg">💾 Lưu cấu hình</button>
     </div>`;
 }
 
@@ -231,9 +281,27 @@ function renderRecentAlerts() {
     : '<div class="list-empty">Chưa có cảnh báo</div>';
 }
 
+function allLogs() {
+  const merged = [...remoteLogs, ...localLogs];
+  const seen = new Set();
+  return merged
+    .filter((log) => {
+      const key = `${log.time}|${log.text}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+}
+
+function logsForDevice(id) {
+  return allLogs().filter((log) => String(log.text || "").includes(id));
+}
+
 function renderLogs() {
-  $("activityLog").innerHTML = logs.length ? logs.slice(0, 5).map((l) => `<div class="log"><b>${esc(l.text)}</b><small>${esc(l.time)}</small></div>`).join("") : '<div class="list-empty">Chưa có nhật ký</div>';
-  $("historyList").innerHTML = logs.length ? logs.map((l) => `<div class="history-item"><b>${esc(l.text)}</b><small>${esc(l.time)}</small></div>`).join("") : '<div class="list-empty">Chưa có lịch sử</div>';
+  const logs = allLogs();
+  $("activityLog").innerHTML = logs.length ? logs.slice(0, 5).map((l) => `<div class="log"><b>${esc(l.text)}</b><small>${esc(l.time || "")}</small></div>`).join("") : '<div class="list-empty">Chưa có nhật ký</div>';
+  $("historyList").innerHTML = logs.length ? logs.map((l) => `<div class="history-item"><b>${esc(l.text)}</b><small>${esc(l.time || "")}</small></div>`).join("") : '<div class="list-empty">Chưa có lịch sử</div>';
 }
 
 function renderLists() {
@@ -247,7 +315,11 @@ function renderLists() {
   }, {});
   $("groupList").innerHTML = Object.entries(groups).map(([group, ids]) => `<p><b>${esc(group)}</b>: ${ids.map(esc).join(", ")}</p>`).join("") || '<div class="list-empty">Chưa có thiết bị</div>';
 
-  $("mapList").innerHTML = entries.map(([id, d]) => `<div class="alert-item"><b>${esc(id)} - ${esc(d.VITRI || "")}</b><small>LAT: ${esc(d.LAT || "chưa có")}, LNG: ${esc(d.LNG || "chưa có")}</small></div>`).join("") || "Chưa có thiết bị";
+  $("mapList").innerHTML = entries.map(([id, d]) => {
+    const hasLocation = d.LAT && d.LNG;
+    const link = hasLocation ? ` <a target="_blank" href="https://www.google.com/maps?q=${encodeURIComponent(`${d.LAT},${d.LNG}`)}">Mở bản đồ</a>` : "";
+    return `<div class="alert-item"><b>${esc(id)} - ${esc(d.VITRI || "")}</b><small>LAT: ${esc(d.LAT || "chưa có")}, LNG: ${esc(d.LNG || "chưa có")}${link}</small></div>`;
+  }).join("") || "Chưa có thiết bị";
 }
 
 function fmtAlert(d) {
@@ -263,7 +335,7 @@ function fmtAlert(d) {
 async function writeDevice(id, data, actionText) {
   try {
     await update(ref(db, `Device/${id}`), { ...data, LAST_UPDATE: fmtTime() });
-    addLog(`${actionText}: ${id}`);
+    await addLog(`${actionText}: ${id}`);
     notify(`${actionText} thành công`);
   } catch (err) {
     notify(`Lỗi ghi Firebase: ${err.message}`, "error");
@@ -295,31 +367,67 @@ function handleSnapshot(snapshot) {
   renderDetail();
 }
 
+function handleLogs(snapshot) {
+  remoteLogs = Object.values(snapshot.val() || {}).sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)).slice(0, 80);
+  renderLogs();
+  renderDetail();
+}
+
 async function startFirebase() {
   try {
     setConnection("pending", "AUTHENTICATING");
     const credential = await signInAnonymously(auth);
     setConnection("ok", "AUTHENTICATED");
-    addLog(`Firebase Auth anonymous: ${credential.user.uid}`);
+    saveLocalLog({ text: `Firebase Auth anonymous: ${credential.user.uid}`, type: "auth", time: fmtTime(), ts: Date.now() });
 
     onValue(ref(db, "Device"), handleSnapshot, (err) => {
       setConnection("error", "DATABASE ERROR");
       notify(`Không đọc được Firebase: ${err.message}`, "error");
     });
+    onValue(ref(db, "Logs"), handleLogs, () => renderLogs());
   } catch (err) {
     setConnection("error", "AUTH ERROR");
     notify(`Không đăng nhập được Firebase Auth: ${err.message}`, "error");
   }
 }
 
-startFirebase();
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
-loadLogs();
+loadLocalLogs();
 renderLogs();
+startFirebase();
 $("clock").textContent = new Date().toLocaleTimeString("vi-VN");
 setInterval(() => $("clock").textContent = new Date().toLocaleTimeString("vi-VN"), 1000);
 
-["searchBox", "statusFilter", "groupFilter"].forEach((id) => $(id).addEventListener("input", renderTable));
+["searchBox", "statusFilter", "groupFilter", "line1Filter", "line2Filter", "line3Filter", "powerFilter"].forEach((id) => $(id).addEventListener("input", () => {
+  currentPage = 1;
+  renderTable();
+}));
+
+$("pageSize").addEventListener("change", () => {
+  pageSize = Number($("pageSize").value);
+  currentPage = 1;
+  renderTable();
+});
+$("prevPage").onclick = () => { currentPage = Math.max(1, currentPage - 1); renderTable(); };
+$("nextPage").onclick = () => { currentPage += 1; renderTable(); };
+$("advancedFilterBtn").onclick = () => $("advancedPanel").classList.toggle("hidden");
+$("clearFilters").onclick = () => {
+  ["searchBox"].forEach((id) => $(id).value = "");
+  ["statusFilter", "groupFilter", "line1Filter", "line2Filter", "line3Filter", "powerFilter"].forEach((id) => $(id).value = "all");
+  currentPage = 1;
+  renderTable();
+};
+$("exportDevices").onclick = () => downloadJson(`devices-${Date.now()}.json`, devices);
+$("backupAll").onclick = () => downloadJson(`canhbaodaynoidat-backup-${Date.now()}.json`, { Device: devices, Logs: allLogs() });
 $("addDeviceBtn").onclick = () => $("deviceModal").classList.add("show");
 $("cancelAdd").onclick = () => $("deviceModal").classList.remove("show");
 $("confirmAdd").onclick = async () => {
@@ -343,7 +451,7 @@ $("confirmAdd").onclick = async () => {
       RESPONSE: 0,
       LAST_UPDATE: fmtTime()
     });
-    addLog(`Thêm thiết bị ${id}`);
+    await addLog(`Thêm thiết bị ${id}`);
     notify("Đã tạo thiết bị");
     $("deviceModal").classList.remove("show");
     $("newId").value = "";
@@ -355,7 +463,7 @@ $("confirmAdd").onclick = async () => {
 };
 
 $("clearLogs").onclick = () => {
-  logs = [];
+  localLogs = [];
   localStorage.removeItem("evnLogs");
   renderLogs();
 };
@@ -373,6 +481,18 @@ document.addEventListener("click", (event) => {
   const viewId = target.dataset.viewId;
   if (viewId) return selectDevice(viewId);
 
+  const page = target.dataset.page;
+  if (page) {
+    currentPage = Number(page);
+    return renderTable();
+  }
+
+  const detailTab = target.dataset.detailTab;
+  if (detailTab) {
+    activeDetailTab = detailTab;
+    return renderDetail();
+  }
+
   const testId = target.dataset.testId;
   if (testId) return writeDevice(testId, { WARNING: 1, RESPONSE: 0 }, "Gửi lệnh test cảnh báo");
 
@@ -388,7 +508,7 @@ document.addEventListener("click", (event) => {
   if (target.classList.contains("nav")) {
     document.querySelectorAll(".nav").forEach((nav) => nav.classList.remove("active"));
     target.classList.add("active");
-    document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"));
+    document.querySelectorAll(".page").forEach((pageEl) => pageEl.classList.remove("active"));
     $(`view-${target.dataset.view}`).classList.add("active");
     document.querySelector(".sidebar").classList.remove("open");
   }
