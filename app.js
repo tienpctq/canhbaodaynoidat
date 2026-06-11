@@ -237,6 +237,46 @@ function renderStaleDevices(entries) {
   </div>`).join("") : '<div class="list-empty">Không có thiết bị quá hạn cập nhật</div>';
 }
 
+function alertLogEntries() {
+  return allLogs().filter((log) => /cảnh báo|test|đứt|mất nguồn|offline|Firebase cập nhật/i.test(String(log.text || "")));
+}
+
+function renderAlertTrend() {
+  const chart = $("alertTrendChart");
+  if (!chart) return;
+  const now = Date.now();
+  const buckets = Array.from({ length: 24 }, (_, idx) => ({
+    hour: new Date(now - (23 - idx) * 60 * 60 * 1000).getHours(),
+    count: 0
+  }));
+  alertLogEntries().forEach((log) => {
+    const ts = Number(log.ts || 0);
+    if (!ts || now - ts > 24 * 60 * 60 * 1000) return;
+    const diff = Math.floor((now - ts) / (60 * 60 * 1000));
+    const index = 23 - diff;
+    if (buckets[index]) buckets[index].count += 1;
+  });
+  const max = Math.max(1, ...buckets.map((item) => item.count));
+  chart.innerHTML = buckets.map((item) => `<div class="trend-bar" title="${item.hour}h: ${item.count} cảnh báo"><span style="height:${Math.max(6, item.count / max * 100)}%"></span><small>${item.hour}</small></div>`).join("");
+}
+
+function renderPriorityAlerts(entries) {
+  const box = $("priorityAlertList");
+  if (!box) return;
+  const priorities = [];
+  entries.forEach(([id, d]) => {
+    if (!powerOk(d)) priorities.push({ level: "critical", id, text: "Mất nguồn LOOP", d });
+    ["LINE1", "LINE2", "LINE3"].forEach((line) => {
+      if (!phaseOk(d, line)) priorities.push({ level: "high", id, text: `${line.replace("LINE", "L")}: Đứt dây`, d });
+    });
+    if (!isOnline(d)) priorities.push({ level: "medium", id, text: "Thiết bị offline", d });
+    if (!isOk(d.RESPONSE)) priorities.push({ level: "low", id, text: "Chờ phản hồi lệnh", d });
+  });
+  const rank = { critical: 0, high: 1, medium: 2, low: 3 };
+  priorities.sort((a, b) => rank[a.level] - rank[b.level]);
+  box.innerHTML = priorities.slice(0, 10).map((item) => `<button class="priority-item ${item.level}" data-view-id="${esc(item.id)}"><b>${esc(item.id)} - ${esc(item.text)}</b><small>${esc(item.d.VITRI || "")}</small></button>`).join("") || '<div class="list-empty">Không có cảnh báo ưu tiên</div>';
+}
+
 function renderTopAlertDevices(entries) {
   const box = $("topAlertDevices");
   if (!box) return;
@@ -266,6 +306,8 @@ function renderDashboardVisuals() {
   renderPhaseMatrix(entries);
   renderStaleDevices(entries);
   renderTopAlertDevices(entries);
+  renderAlertTrend();
+  renderPriorityAlerts(entries);
 }
 
 function renderDashboardStatusGrid() {
@@ -579,6 +621,59 @@ async function startFirebase() {
   }
 }
 
+function activateView(viewName) {
+  document.querySelectorAll(".nav").forEach((nav) => nav.classList.toggle("active", nav.dataset.view === viewName));
+  document.querySelectorAll(".page").forEach((pageEl) => pageEl.classList.remove("active"));
+  $(`view-${viewName}`).classList.add("active");
+  document.querySelector(".sidebar").classList.remove("open");
+  if (viewName === "map") setTimeout(() => renderDeviceMap(), 80);
+}
+
+function showDeviceModuleWithFilter(kind) {
+  activateView("devices");
+  if (kind === "alert") $("statusFilter").value = "alert";
+  if (kind === "offline") $("statusFilter").value = "offline";
+  if (kind === "power") {
+    $("statusFilter").value = "all";
+    $("powerFilter").value = "bad";
+    $("advancedPanel").classList.remove("hidden");
+  }
+  if (kind === "stale") {
+    $("statusFilter").value = "all";
+    $("searchBox").value = "";
+    $("advancedPanel").classList.add("hidden");
+    const first = getStaleDevices(Object.entries(devices))[0];
+    if (first) selectedId = first.id;
+  }
+  currentPage = 1;
+  renderTable();
+  renderDetail();
+}
+
+async function restoreBackupFromFile() {
+  const input = $("restoreBackupFile");
+  const file = input?.files?.[0];
+  if (!file) return notify("Chọn file JSON cần khôi phục", "error");
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    return notify("File JSON không hợp lệ", "error");
+  }
+  const deviceData = data.Device || data.devices || data;
+  const logsData = data.Logs || data.logs;
+  if (!deviceData || typeof deviceData !== "object" || Array.isArray(deviceData)) return notify("Không tìm thấy dữ liệu Device hợp lệ", "error");
+  if (!confirm("Khôi phục sẽ ghi đè dữ liệu /Device hiện tại. Tiếp tục?")) return;
+  try {
+    await set(ref(db, "Device"), deviceData);
+    if (logsData && confirm("File có dữ liệu Logs. Khôi phục cả /Logs?")) await set(ref(db, "Logs"), logsData);
+    await addLog("Khôi phục dữ liệu từ file backup");
+    notify("Khôi phục dữ liệu thành công");
+  } catch (err) {
+    notify(`Lỗi khôi phục dữ liệu: ${err.message}`, "error");
+  }
+}
+
 function downloadJson(filename, data) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -616,6 +711,9 @@ $("clearFilters").onclick = () => {
 };
 $("exportDevices").onclick = () => downloadJson(`devices-${Date.now()}.json`, devices);
 $("backupAll").onclick = () => downloadJson(`canhbaodaynoidat-backup-${Date.now()}.json`, { Device: devices, Logs: allLogs() });
+$("restoreBackup").onclick = restoreBackupFromFile;
+$("monitorModeBtn").onclick = () => document.body.classList.toggle("monitor-mode");
+document.querySelectorAll("[data-quick-filter]").forEach((btn) => btn.addEventListener("click", () => showDeviceModuleWithFilter(btn.dataset.quickFilter)));
 $("fitMapMarkers").onclick = fitMapToMarkers;
 $("mapDeviceSelect").addEventListener("change", () => {
   const id = $("mapDeviceSelect").value;
@@ -719,11 +817,6 @@ document.addEventListener("click", (event) => {
   if (target.id === "saveAllCfg" && selectedId) return saveConfig(selectedId);
 
   if (target.classList.contains("nav")) {
-    document.querySelectorAll(".nav").forEach((nav) => nav.classList.remove("active"));
-    target.classList.add("active");
-    document.querySelectorAll(".page").forEach((pageEl) => pageEl.classList.remove("active"));
-    $(`view-${target.dataset.view}`).classList.add("active");
-    if (target.dataset.view === "map") setTimeout(() => renderDeviceMap(), 80);
-    document.querySelector(".sidebar").classList.remove("open");
+    activateView(target.dataset.view);
   }
 });

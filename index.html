@@ -67,6 +67,14 @@
       </div>
 
 
+      <div class="quick-actions" id="quickDashboardActions">
+        <button class="outline" data-quick-filter="alert">Xem thiết bị cảnh báo</button>
+        <button class="outline" data-quick-filter="offline">Xem thiết bị offline</button>
+        <button class="outline" data-quick-filter="power">Xem mất nguồn</button>
+        <button class="outline" data-quick-filter="stale">Xem chưa cập nhật</button>
+        <button class="primary" id="monitorModeBtn">Màn hình giám sát</button>
+      </div>
+
       <div class="dashboard-visuals">
         <div class="bottom-grid">
           <div class="card"><h3>THỐNG KÊ TRẠNG THÁI THIẾT BỊ</h3><div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend"><p><span class="dot green"></span>Online <b id="lgOnline">0</b></p><p><span class="dot gray"></span>Offline <b id="lgOffline">0</b></p><p><span class="dot red"></span>Cảnh báo <b id="lgAlert">0</b></p></div></div></div>
@@ -91,9 +99,20 @@
           </div>
         </div>
 
-        <div class="card status-overview">
-          <h3>MA TRẬN TRẠNG THÁI 3 PHA</h3>
-          <div id="phaseMatrix" class="phase-matrix"></div>
+        <div class="dashboard-wide">
+          <div class="card status-overview">
+            <h3>MA TRẬN TRẠNG THÁI 3 PHA</h3>
+            <div id="phaseMatrix" class="phase-matrix"></div>
+          </div>
+          <div class="card">
+            <h3>XU HƯỚNG CẢNH BÁO 24 GIỜ</h3>
+            <div id="alertTrendChart" class="trend-chart"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>CẢNH BÁO ƯU TIÊN</h3>
+          <div id="priorityAlertList" class="priority-list"></div>
         </div>
 
         <div class="card status-overview">
@@ -185,10 +204,10 @@
     ".read": "auth != null",
     ".write": "auth != null"
   }
-}</pre><p class="note">Cần bật Firebase Console → Authentication → Sign-in method → Anonymous. Nếu ESP32 đọc/ghi trực tiếp, firmware cũng cần cơ chế xác thực tương ứng.</p></div></section>
+}</pre><p class="note">Cần bật Firebase Console → Authentication → Sign-in method → Anonymous. Nếu ESP32 đọc/ghi trực tiếp, firmware cũng cần cơ chế xác thực tương ứng.</p><div class="settings-checklist" id="settingsChecklist"><div><b>Firebase Auth</b><small>Anonymous Auth cho web quản trị</small></div><div><b>Realtime Database</b><small>Rule hiện tại yêu cầu auth != null</small></div><div><b>Netlify</b><small>Triển khai tự động từ GitHub main</small></div></div></div></section>
     <section class="page" id="view-users"><div class="card"><h3>NGƯỜI DÙNG</h3><div class="info-grid"><div><b>admin</b><small>Quản trị hệ thống web</small></div><div><b>ESP32</b><small>Thiết bị gửi trạng thái qua Firebase</small></div></div></div></section>
     <section class="page" id="view-permissions"><div class="card"><h3>PHÂN QUYỀN</h3><p>Hiện web dùng Anonymous Auth để thỏa rule <b>auth != null</b>. Khi vận hành chính thức nên chuyển sang Email/Password hoặc custom token để phân quyền admin và thiết bị.</p></div></section>
-    <section class="page" id="view-backup"><div class="card"><h3>SAO LƯU DỮ LIỆU</h3><p>Xuất toàn bộ dữ liệu đang đọc được từ Firebase thành file JSON.</p><button id="backupAll" class="primary">Tải bản sao lưu JSON</button></div></section>
+    <section class="page" id="view-backup"><div class="card"><h3>SAO LƯU DỮ LIỆU</h3><p>Xuất toàn bộ dữ liệu đang đọc được từ Firebase thành file JSON.</p><div class="backup-actions"><button id="backupAll" class="primary">Tải bản sao lưu JSON</button><label class="file-pick">Chọn file khôi phục<input id="restoreBackupFile" type="file" accept="application/json"></label><button id="restoreBackup" class="outline">Khôi phục từ JSON</button></div><p class="note">Khôi phục sẽ ghi lại dữ liệu trong path <b>/Device</b> và tùy chọn <b>/Logs</b> nếu file backup có dữ liệu tương ứng.</p></div></section>
     <section class="page" id="view-about"><div class="card"><h3>GIỚI THIỆU</h3><p>Hệ thống giám sát dây nối đất dùng ESP32, Firebase Realtime Database và web dashboard Netlify.</p><p>Phiên bản: <b>v3.0.0</b></p></div></section>
   </main>
 

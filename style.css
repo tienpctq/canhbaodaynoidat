@@ -113,3 +113,32 @@ main{transition:margin-left .22s ease}
 .phase-tile i{width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block}
 .phase-tile i.bad{background:var(--red)}
 @media(max-width:1200px){.dashboard-insights{grid-template-columns:1fr}}
+
+
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.dashboard-wide{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+.trend-chart{height:170px;display:grid;grid-template-columns:repeat(24,1fr);gap:4px;align-items:end;border:1px solid var(--line);border-radius:10px;padding:12px;background:#f8fbff}
+.trend-bar{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
+.trend-bar span{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#ef4444,#f59e0b);min-height:6px}
+.trend-bar small{font-size:10px;color:var(--muted)}
+.priority-list{display:grid;gap:8px}
+.priority-item{width:100%;text-align:left;border:1px solid var(--line);border-left-width:5px;background:#fff;border-radius:10px;padding:10px}
+.priority-item.critical{border-left-color:#dc2626}
+.priority-item.high{border-left-color:#f97316}
+.priority-item.medium{border-left-color:#f59e0b}
+.priority-item.low{border-left-color:#64748b}
+.priority-item b{display:block;color:#0f2e69}
+.priority-item small{display:block;color:var(--muted);margin-top:5px}
+.backup-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.file-pick{border:1px dashed #aac7e8;border-radius:8px;padding:10px 12px;color:#0d63ce;font-weight:bold;background:#f8fbff}
+.file-pick input{display:none}
+.settings-checklist{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.settings-checklist div{border:1px solid var(--line);border-radius:10px;padding:12px;background:#f8fbff}
+.settings-checklist small{display:block;color:var(--muted);margin-top:5px}
+body.monitor-mode .sidebar,body.monitor-mode .topbar{display:none}
+body.monitor-mode main{margin-left:0}
+body.monitor-mode .page{padding:18px}
+body.monitor-mode .page:not(#view-dashboard){display:none!important}
+body.monitor-mode #view-dashboard{display:block!important}
+body.monitor-mode .quick-actions{display:none}
+@media(max-width:1200px){.dashboard-wide{grid-template-columns:1fr}.settings-checklist{grid-template-columns:1fr}}
