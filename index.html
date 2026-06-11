@@ -66,7 +66,23 @@
         <div class="stat orange"><i>⌁</i><div><strong id="offlineDevices">0</strong><span>Offline</span><small>Thiết bị đang offline</small></div></div>
       </div>
 
-      <div class="layout">
+
+      <div class="dashboard-visuals">
+        <div class="bottom-grid">
+          <div class="card"><h3>THỐNG KÊ TRẠNG THÁI THIẾT BỊ</h3><div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend"><p><span class="dot green"></span>Online <b id="lgOnline">0</b></p><p><span class="dot gray"></span>Offline <b id="lgOffline">0</b></p><p><span class="dot red"></span>Cảnh báo <b id="lgAlert">0</b></p></div></div></div>
+          <div class="card"><h3>THIẾT BỊ CẢNH BÁO GẦN NHẤT</h3><div id="recentAlerts" class="list-empty">Chưa có cảnh báo</div></div>
+          <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký local</button></div>
+        </div>
+
+        <div class="card status-overview">
+          <h3>THEO DÕI NHANH TRẠNG THÁI</h3>
+          <div id="dashboardStatusGrid" class="status-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="view-devices">
+      <div class="layout device-management-layout">
         <section class="workspace">
           <div class="filters">
             <input id="searchBox" placeholder="Tìm theo ID, vị trí, số điện thoại..." />
@@ -114,11 +130,6 @@
             </div>
           </div>
 
-          <div class="bottom-grid">
-            <div class="card"><h3>THỐNG KÊ TRẠNG THÁI THIẾT BỊ</h3><div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend"><p><span class="dot green"></span>Online <b id="lgOnline">0</b></p><p><span class="dot gray"></span>Offline <b id="lgOffline">0</b></p><p><span class="dot red"></span>Cảnh báo <b id="lgAlert">0</b></p></div></div></div>
-            <div class="card"><h3>THIẾT BỊ CẢNH BÁO GẦN NHẤT</h3><div id="recentAlerts" class="list-empty">Chưa có cảnh báo</div></div>
-            <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký local</button></div>
-          </div>
         </section>
 
         <aside class="detail-panel">
@@ -127,8 +138,6 @@
         </aside>
       </div>
     </section>
-
-    <section class="page" id="view-devices"><div class="card"><h3>QUẢN LÝ THIẾT BỊ</h3><p>Dữ liệu được đồng bộ realtime từ Firebase path <b>/Device</b>. Mỗi thiết bị dùng key như <b>ID1_001</b> và các trường ESP32: LINE1, LINE2, LINE3, LINEPW, ONLINE, WARNING, ENABLEBUZZ, RST, RESPONSE, SDT, SMS, SEND_INTERVAL, VITRI.</p></div></section>
     <section class="page" id="view-map">
       <div class="card">
         <div class="card-title split">

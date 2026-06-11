@@ -173,6 +173,21 @@ function renderPagination(total) {
     .join("");
 }
 
+function renderDashboardStatusGrid() {
+  const grid = $("dashboardStatusGrid");
+  if (!grid) return;
+  const entries = Object.entries(devices).slice(0, 12);
+  grid.innerHTML = entries.length ? entries.map(([id, d]) => {
+    const bad = hasAlert(d);
+    return `<div class="status-card">
+      <b>${esc(id)}</b>
+      ${statusBadge(isOnline(d))}
+      <small>${esc(d.VITRI || "--")}</small>
+      <small class="${bad ? "bad-text" : ""}">${esc(fmtAlert(d))}</small>
+    </div>`;
+  }).join("") : '<div class="list-empty">Chưa có thiết bị để theo dõi</div>';
+}
+
 function renderTable() {
   const allEntries = Object.entries(devices);
   const list = filteredDevices();
@@ -208,6 +223,7 @@ function renderTable() {
 
   renderRecentAlerts();
   renderLists();
+  renderDashboardStatusGrid();
 }
 
 function selectDevice(id) {
