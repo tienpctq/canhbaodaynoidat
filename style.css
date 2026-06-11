@@ -142,3 +142,7 @@ body.monitor-mode .page:not(#view-dashboard){display:none!important}
 body.monitor-mode #view-dashboard{display:block!important}
 body.monitor-mode .quick-actions{display:none}
 @media(max-width:1200px){.dashboard-wide{grid-template-columns:1fr}.settings-checklist{grid-template-columns:1fr}}
+
+
+.monitor-exit{display:none;position:fixed;right:18px;top:18px;z-index:1000;background:#ef4444;color:#fff;padding:11px 14px;box-shadow:var(--shadow)}
+body.monitor-mode .monitor-exit{display:block}

@@ -712,7 +712,11 @@ $("clearFilters").onclick = () => {
 $("exportDevices").onclick = () => downloadJson(`devices-${Date.now()}.json`, devices);
 $("backupAll").onclick = () => downloadJson(`canhbaodaynoidat-backup-${Date.now()}.json`, { Device: devices, Logs: allLogs() });
 $("restoreBackup").onclick = restoreBackupFromFile;
-$("monitorModeBtn").onclick = () => document.body.classList.toggle("monitor-mode");
+$("monitorModeBtn").onclick = () => document.body.classList.add("monitor-mode");
+$("exitMonitorMode").onclick = () => document.body.classList.remove("monitor-mode");
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") document.body.classList.remove("monitor-mode");
+});
 document.querySelectorAll("[data-quick-filter]").forEach((btn) => btn.addEventListener("click", () => showDeviceModuleWithFilter(btn.dataset.quickFilter)));
 $("fitMapMarkers").onclick = fitMapToMarkers;
 $("mapDeviceSelect").addEventListener("change", () => {
