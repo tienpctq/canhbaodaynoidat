@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
@@ -13,6 +14,7 @@ const firebaseConfig = {
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
 const db = getDatabase(firebaseApp);
 
 let devices = {};
@@ -285,7 +287,7 @@ function handleSnapshot(snapshot) {
   lastSnapshot = serialized;
 
   devices = next;
-  setConnection("ok", "CONNECTED");
+  setConnection("ok", "AUTHENTICATED");
   $("lastSync").textContent = new Date().toLocaleTimeString("vi-VN");
   if (!selectedId && Object.keys(devices).length) selectedId = Object.keys(devices)[0];
   if (selectedId && !devices[selectedId]) selectedId = Object.keys(devices)[0] || null;
@@ -293,10 +295,24 @@ function handleSnapshot(snapshot) {
   renderDetail();
 }
 
-onValue(ref(db, "Device"), handleSnapshot, (err) => {
-  setConnection("error", "ERROR");
-  notify(`Không đọc được Firebase: ${err.message}`, "error");
-});
+async function startFirebase() {
+  try {
+    setConnection("pending", "AUTHENTICATING");
+    const credential = await signInAnonymously(auth);
+    setConnection("ok", "AUTHENTICATED");
+    addLog(`Firebase Auth anonymous: ${credential.user.uid}`);
+
+    onValue(ref(db, "Device"), handleSnapshot, (err) => {
+      setConnection("error", "DATABASE ERROR");
+      notify(`Không đọc được Firebase: ${err.message}`, "error");
+    });
+  } catch (err) {
+    setConnection("error", "AUTH ERROR");
+    notify(`Không đăng nhập được Firebase Auth: ${err.message}`, "error");
+  }
+}
+
+startFirebase();
 
 loadLogs();
 renderLogs();

@@ -12,3 +12,6 @@ tr.selected td{background:#f1f7ff}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.error{background:#dc2626}
 #rulesHint{background:#f6f9fd;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto}
+
+#fbStatus.pending{color:#f59e0b;font-weight:bold}
+.note{color:var(--muted);font-size:14px;margin-top:12px}

@@ -106,12 +106,12 @@
     <section class="page" id="view-groups"><div class="card"><h3>NHÓM THIẾT BỊ</h3><div id="groupList"></div></div></section>
     <section class="page" id="view-alerts"><div class="card"><h3>DANH SÁCH CẢNH BÁO</h3><div id="alertList"></div></div></section>
     <section class="page" id="view-history"><div class="card"><h3>LỊCH SỬ SỰ KIỆN</h3><div id="historyList"></div></div></section>
-    <section class="page" id="view-settings"><div class="card"><h3>CẤU HÌNH HỆ THỐNG</h3><p>Realtime Database hiện đang mở quyền đọc/ghi để test. Khi chạy chính thức nên bật Authentication hoặc custom token cho web quản trị và ESP32.</p><pre id="rulesHint">{
+    <section class="page" id="view-settings"><div class="card"><h3>CẤU HÌNH HỆ THỐNG</h3><p>Realtime Database hiện yêu cầu người dùng đã xác thực. Web sẽ tự đăng nhập Firebase Anonymous Auth trước khi đọc/ghi dữ liệu.</p><pre id="rulesHint">{
   "rules": {
-    ".read": true,
-    ".write": true
+    ".read": "auth != null",
+    ".write": "auth != null"
   }
-}</pre></div></section>
+}</pre><p class="note">Trong Firebase Console cần bật Authentication → Sign-in method → Anonymous.</p></div></section>
   </main>
 
   <div class="toast" id="toast"></div>
