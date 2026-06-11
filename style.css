@@ -63,3 +63,26 @@ main{transition:margin-left .22s ease}
 .device-map{height:460px;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:14px 0;background:#eef6ff}
 .map-list .action-btn{margin-top:8px}
 @media(max-width:900px){.map-toolbar{grid-template-columns:1fr}.device-map{height:360px}}
+
+
+.nav{display:flex;align-items:center;gap:10px}
+.nav-icon{width:22px;min-width:22px;text-align:center;font-size:18px;line-height:1}
+.nav-label{overflow:hidden;text-overflow:ellipsis}
+@media(min-width:761px){
+  body.sidebar-collapsed .sidebar{transform:none;width:76px;padding:22px 12px}
+  body.sidebar-collapsed main{margin-left:76px}
+  body.sidebar-collapsed .brand{justify-content:center;margin-bottom:22px}
+  body.sidebar-collapsed .brand h2,
+  body.sidebar-collapsed .brand span,
+  body.sidebar-collapsed nav p,
+  body.sidebar-collapsed .nav-label,
+  body.sidebar-collapsed .connection b,
+  body.sidebar-collapsed .connection small,
+  body.sidebar-collapsed .version{display:none}
+  body.sidebar-collapsed .logo{width:44px;height:44px;font-size:24px}
+  body.sidebar-collapsed .nav{justify-content:center;padding:13px 0}
+  body.sidebar-collapsed .nav-icon{margin:0}
+  body.sidebar-collapsed .nav b{position:absolute;right:6px;top:5px;float:none;font-size:10px}
+  body.sidebar-collapsed .connection{left:12px;right:12px;bottom:22px;padding:10px;display:grid;place-items:center}
+  body.sidebar-collapsed .connection .dot{margin:0}
+}
