@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EVN SmartEVN - Giám sát đứt dây điện 3 pha</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div>
+        <h2>EVN</h2>
+        <span>SmartEVN</span>
+      </div>
+    </div>
+
+    <nav>
+      <p>TỔNG QUAN</p>
+      <button class="nav active" data-view="dashboard">▣ Dashboard</button>
+      <p>THIẾT BỊ</p>
+      <button class="nav" data-view="devices">▤ Danh sách thiết bị</button>
+      <button class="nav" data-view="map">⌖ Bản đồ thiết bị</button>
+      <button class="nav" data-view="groups">☷ Nhóm thiết bị</button>
+      <p>CẢNH BÁO</p>
+      <button class="nav" data-view="alerts">♢ Danh sách cảnh báo <b id="sideAlertCount">0</b></button>
+      <button class="nav" data-view="history">◷ Lịch sử sự kiện</button>
+      <p>CẤU HÌNH</p>
+      <button class="nav" data-view="settings">⚙ Cấu hình chung</button>
+    </nav>
+
+    <div class="connection">
+      <span class="dot green"></span><b>Kết nối hệ thống</b><br>
+      <small>Firebase: <span id="fbStatus">Đang kết nối...</span></small><br>
+      <small>Cập nhật: <span id="lastSync">--</span></small>
+    </div>
+    <div class="version">v2.1.0</div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <button id="toggleSidebar" class="hamburger" title="Mở menu">☰</button>
+      <div>
+        <h1>HỆ THỐNG GIÁM SÁT ĐỨT DÂY ĐIỆN 3 PHA</h1>
+        <p>Firebase Realtime Database</p>
+      </div>
+      <div class="top-actions">
+        <span class="bell">🔔<b id="bellCount">0</b></span>
+        <span id="clock">--:--:--</span>
+        <span class="user">👤 admin</span>
+      </div>
+    </header>
+
+    <section class="page active" id="view-dashboard">
+      <div class="grid stats">
+        <div class="stat"><i>▦</i><div><strong id="totalDevices">0</strong><span>Tổng thiết bị</span><small>Tất cả thiết bị trong hệ thống</small></div></div>
+        <div class="stat green"><i>✓</i><div><strong id="onlineDevices">0</strong><span>Online</span><small id="onlinePercent">0% thiết bị đang online</small></div></div>
+        <div class="stat red"><i>!</i><div><strong id="alertDevices">0</strong><span>Cảnh báo</span><small>Thiết bị có cảnh báo</small></div></div>
+        <div class="stat orange"><i>⌁</i><div><strong id="offlineDevices">0</strong><span>Offline</span><small>Thiết bị đang offline</small></div></div>
+      </div>
+
+      <div class="layout">
+        <section class="workspace">
+          <div class="filters">
+            <input id="searchBox" placeholder="Tìm theo ID, vị trí, số điện thoại..." />
+            <select id="groupFilter"><option value="all">Tất cả nhóm</option></select>
+            <select id="statusFilter">
+              <option value="all">Tất cả trạng thái</option>
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
+              <option value="alert">Có cảnh báo</option>
+            </select>
+            <button id="addDeviceBtn" class="primary">＋ Thêm thiết bị</button>
+          </div>
+
+          <div class="card table-card">
+            <div class="card-title"><h3>DANH SÁCH THIẾT BỊ (<span id="deviceCountTitle">0</span>)</h3></div>
+            <div id="emptyState" class="empty-state hidden">Chưa có dữ liệu tại Firebase path <b>/Device</b>.</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID Thiết bị</th><th>Vị trí</th><th>Trạng thái</th><th>L1</th><th>L2</th><th>L3</th><th>Nguồn</th><th>Cảnh báo</th><th>Cập nhật cuối</th><th>Thao tác</th></tr>
+                </thead>
+                <tbody id="deviceRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bottom-grid">
+            <div class="card"><h3>THỐNG KÊ TRẠNG THÁI THIẾT BỊ</h3><div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend"><p><span class="dot green"></span>Online <b id="lgOnline">0</b></p><p><span class="dot gray"></span>Offline <b id="lgOffline">0</b></p><p><span class="dot red"></span>Cảnh báo <b id="lgAlert">0</b></p></div></div></div>
+            <div class="card"><h3>THIẾT BỊ CẢNH BÁO GẦN NHẤT</h3><div id="recentAlerts" class="list-empty">Chưa có cảnh báo</div></div>
+            <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký</button></div>
+          </div>
+        </section>
+
+        <aside class="detail-panel">
+          <div class="panel-head"><h3>THÔNG TIN CHI TIẾT</h3><button id="closeDetail">×</button></div>
+          <div id="detailContent" class="detail-empty">Chọn một thiết bị để xem chi tiết</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="page" id="view-devices"><div class="card"><h3>QUẢN LÝ THIẾT BỊ</h3><p>Dữ liệu được đồng bộ realtime từ Firebase path <b>/Device</b>. Mỗi thiết bị dùng key như <b>ID1_001</b> và các trường ESP32: LINE1, LINE2, LINE3, LINEPW, ONLINE, WARNING, ENABLEBUZZ, RST, RESPONSE, SDT, SMS, SEND_INTERVAL, VITRI.</p></div></section>
+    <section class="page" id="view-map"><div class="card"><h3>BẢN ĐỒ THIẾT BỊ</h3><div id="mapList" class="map-placeholder">Thêm LAT/LNG cho từng thiết bị để hiển thị bản đồ thật.</div></div></section>
+    <section class="page" id="view-groups"><div class="card"><h3>NHÓM THIẾT BỊ</h3><div id="groupList"></div></div></section>
+    <section class="page" id="view-alerts"><div class="card"><h3>DANH SÁCH CẢNH BÁO</h3><div id="alertList"></div></div></section>
+    <section class="page" id="view-history"><div class="card"><h3>LỊCH SỬ SỰ KIỆN</h3><div id="historyList"></div></div></section>
+    <section class="page" id="view-settings"><div class="card"><h3>CẤU HÌNH HỆ THỐNG</h3><p>Realtime Database hiện đang mở quyền đọc/ghi để test. Khi chạy chính thức nên bật Authentication hoặc custom token cho web quản trị và ESP32.</p><pre id="rulesHint">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre></div></section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal" id="deviceModal">
+    <div class="modal-box">
+      <h3>Thêm thiết bị mới</h3>
+      <label>ID thiết bị<input id="newId" placeholder="VD: ID1_002"></label>
+      <label>Vị trí<input id="newLocation" placeholder="VD: TBA ABC"></label>
+      <label>Số điện thoại<input id="newPhone" placeholder="036..."></label>
+      <div class="modal-actions"><button id="cancelAdd" class="outline">Hủy</button><button id="confirmAdd" class="primary">Tạo thiết bị</button></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
