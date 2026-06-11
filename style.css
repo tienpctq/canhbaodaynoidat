@@ -94,3 +94,22 @@ main{transition:margin-left .22s ease}
 .status-card b{display:block;color:#003a96;margin-bottom:8px}
 .status-card small{display:block;color:var(--muted);margin-top:6px}
 .device-management-layout{align-items:start}
+
+
+.dashboard-insights{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.health-card{text-align:center}
+.health-gauge{width:150px;height:150px;border-radius:50%;margin:8px auto 12px;display:grid;place-items:center;position:relative;background:conic-gradient(var(--gray) 0deg 360deg)}
+.health-gauge:after{content:"";position:absolute;inset:28px;background:#fff;border-radius:50%}
+.health-gauge span{position:relative;z-index:1;font-size:28px;font-weight:bold;color:#003a96}
+.compact-list{display:grid;gap:8px}
+.compact-item{border:1px solid var(--line);border-radius:10px;padding:10px;background:#f8fbff}
+.compact-item b{display:block;color:#0f2e69}
+.compact-item small{display:block;color:var(--muted);margin-top:5px}
+.phase-matrix{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
+.phase-tile{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;text-align:left;color:var(--text)}
+.phase-tile.has-alert{border-color:#fecaca;background:#fff7f7}
+.phase-tile b{display:block;color:#003a96;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phase-tile span{display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12px}
+.phase-tile i{width:9px;height:9px;border-radius:50%;background:var(--green);display:inline-block}
+.phase-tile i.bad{background:var(--red)}
+@media(max-width:1200px){.dashboard-insights{grid-template-columns:1fr}}

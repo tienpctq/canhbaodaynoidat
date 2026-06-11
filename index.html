@@ -74,6 +74,28 @@
           <div class="card"><h3>NHẬT KÝ HOẠT ĐỘNG</h3><div id="activityLog" class="activity"></div><button id="clearLogs" class="outline">Xóa nhật ký local</button></div>
         </div>
 
+        <div class="dashboard-insights">
+          <div class="card health-card">
+            <h3>SỨC KHỎE HỆ THỐNG</h3>
+            <div class="health-gauge" id="dashboardHealthGauge"><span id="dashboardHealthScore">0%</span></div>
+            <b id="dashboardHealthLabel">Đang chờ dữ liệu</b>
+            <small id="dashboardHealthDetail">Chưa có thiết bị để đánh giá.</small>
+          </div>
+          <div class="card">
+            <h3>THIẾT BỊ CHƯA CẬP NHẬT LÂU</h3>
+            <div id="staleDeviceList" class="compact-list"></div>
+          </div>
+          <div class="card">
+            <h3>TOP THIẾT BỊ CẢNH BÁO</h3>
+            <div id="topAlertDevices" class="compact-list"></div>
+          </div>
+        </div>
+
+        <div class="card status-overview">
+          <h3>MA TRẬN TRẠNG THÁI 3 PHA</h3>
+          <div id="phaseMatrix" class="phase-matrix"></div>
+        </div>
+
         <div class="card status-overview">
           <h3>THEO DÕI NHANH TRẠNG THÁI</h3>
           <div id="dashboardStatusGrid" class="status-grid"></div>

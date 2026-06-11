@@ -173,6 +173,101 @@ function renderPagination(total) {
     .join("");
 }
 
+function parseDeviceUpdateTime(value) {
+  if (!value) return null;
+  if (typeof value === "number") return new Date(value);
+  const raw = String(value).trim();
+  const direct = new Date(raw);
+  if (!Number.isNaN(direct.getTime())) return direct;
+
+  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return null;
+  const [, hh, mm, ss = "0", dd, month, yyyy] = match;
+  return new Date(Number(yyyy), Number(month) - 1, Number(dd), Number(hh), Number(mm), Number(ss));
+}
+
+function getStaleDevices(entries) {
+  const now = Date.now();
+  const staleMs = 10 * 60 * 1000;
+  return entries
+    .map(([id, d]) => ({ id, d, updated: parseDeviceUpdateTime(d.LAST_UPDATE || d.lastSeen) }))
+    .filter((item) => !item.updated || now - item.updated.getTime() > staleMs)
+    .sort((a, b) => (a.updated?.getTime() || 0) - (b.updated?.getTime() || 0))
+    .slice(0, 6);
+}
+
+function renderDashboardHealth(entries) {
+  const total = entries.length;
+  const online = entries.filter(([, d]) => isOnline(d)).length;
+  const alert = entries.filter(([, d]) => hasAlert(d)).length;
+  const stale = getStaleDevices(entries).length;
+  const score = total ? Math.max(0, Math.round(100 - ((total - online) / total) * 35 - (alert / total) * 45 - (stale / total) * 20)) : 0;
+  const label = score >= 90 ? "Tốt" : score >= 70 ? "Cần chú ý" : score > 0 ? "Nguy hiểm" : "Chưa có dữ liệu";
+  const gauge = $("dashboardHealthGauge");
+  if (!gauge) return;
+  $("dashboardHealthScore").textContent = total ? `${score}%` : "0%";
+  $("dashboardHealthLabel").textContent = label;
+  $("dashboardHealthDetail").textContent = total ? `${online}/${total} online, ${alert} cảnh báo, ${stale} chưa cập nhật lâu.` : "Chưa có thiết bị để đánh giá.";
+  gauge.style.background = `conic-gradient(${score >= 90 ? "var(--green)" : score >= 70 ? "var(--orange)" : "var(--red)"} 0deg ${score * 3.6}deg,#e5eef8 ${score * 3.6}deg 360deg)`;
+}
+
+function renderPhaseMatrix(entries) {
+  const grid = $("phaseMatrix");
+  if (!grid) return;
+  grid.innerHTML = entries.length ? entries.slice(0, 40).map(([id, d]) => {
+    const l1 = phaseOk(d, "LINE1");
+    const l2 = phaseOk(d, "LINE2");
+    const l3 = phaseOk(d, "LINE3");
+    return `<button class="phase-tile ${hasAlert(d) ? "has-alert" : ""}" data-view-id="${esc(id)}" title="${esc(id)} - ${esc(d.VITRI || "")}">
+      <b>${esc(id)}</b>
+      <span><i class="${l1 ? "" : "bad"}"></i>L1</span>
+      <span><i class="${l2 ? "" : "bad"}"></i>L2</span>
+      <span><i class="${l3 ? "" : "bad"}"></i>L3</span>
+    </button>`;
+  }).join("") : '<div class="list-empty">Chưa có thiết bị để hiển thị ma trận</div>';
+}
+
+function renderStaleDevices(entries) {
+  const box = $("staleDeviceList");
+  if (!box) return;
+  const stale = getStaleDevices(entries);
+  box.innerHTML = stale.length ? stale.map(({ id, d, updated }) => `<div class="compact-item">
+    <b>${esc(id)} - ${esc(d.VITRI || "")}</b>
+    <small>${updated ? `Cập nhật cuối: ${esc(d.LAST_UPDATE || d.lastSeen)}` : "Chưa có thời gian cập nhật"}</small>
+  </div>`).join("") : '<div class="list-empty">Không có thiết bị quá hạn cập nhật</div>';
+}
+
+function renderTopAlertDevices(entries) {
+  const box = $("topAlertDevices");
+  if (!box) return;
+  const counts = {};
+  allLogs().forEach((log) => {
+    const text = String(log.text || "");
+    if (!/cảnh báo|test|reset|tọa độ|còi|Firebase cập nhật/i.test(text)) return;
+    entries.forEach(([id]) => {
+      if (text.includes(id)) counts[id] = (counts[id] || 0) + 1;
+    });
+  });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const fallback = entries.filter(([, d]) => hasAlert(d)).slice(0, 5).map(([id]) => [id, 1]);
+  const list = top.length ? top : fallback;
+  box.innerHTML = list.length ? list.map(([id, count]) => {
+    const d = devices[id] || {};
+    return `<div class="compact-item">
+      <b>${esc(id)} - ${esc(d.VITRI || "")}</b>
+      <small>${count} lần ghi nhận • ${esc(fmtAlert(d))}</small>
+    </div>`;
+  }).join("") : '<div class="list-empty">Chưa có dữ liệu cảnh báo</div>';
+}
+
+function renderDashboardVisuals() {
+  const entries = Object.entries(devices);
+  renderDashboardHealth(entries);
+  renderPhaseMatrix(entries);
+  renderStaleDevices(entries);
+  renderTopAlertDevices(entries);
+}
+
 function renderDashboardStatusGrid() {
   const grid = $("dashboardStatusGrid");
   if (!grid) return;
@@ -224,6 +319,7 @@ function renderTable() {
   renderRecentAlerts();
   renderLists();
   renderDashboardStatusGrid();
+  renderDashboardVisuals();
 }
 
 function selectDevice(id) {
@@ -462,6 +558,7 @@ function handleLogs(snapshot) {
   remoteLogs = Object.values(snapshot.val() || {}).sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)).slice(0, 80);
   renderLogs();
   renderDetail();
+  renderDashboardVisuals();
 }
 
 async function startFirebase() {
