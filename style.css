@@ -146,3 +146,79 @@ body.monitor-mode .quick-actions{display:none}
 
 .monitor-exit{display:none;position:fixed;right:18px;top:18px;z-index:1000;background:#ef4444;color:#fff;padding:11px 14px;box-shadow:var(--shadow)}
 body.monitor-mode .monitor-exit{display:block}
+
+
+@media(min-width:1201px){
+  #view-dashboard.page.active{height:calc(100vh - 90px);overflow:hidden;padding:14px}
+  #view-dashboard .grid.stats{gap:10px;margin-bottom:10px}
+  #view-dashboard .stat{padding:12px 14px;gap:12px;border-radius:10px;min-height:88px}
+  #view-dashboard .stat i{width:44px;height:44px;border-radius:12px;font-size:22px}
+  #view-dashboard .stat strong{font-size:24px}
+  #view-dashboard .stat small{margin-top:4px}
+  #view-dashboard .quick-actions{margin-bottom:10px;gap:8px}
+  #view-dashboard .quick-actions button{padding:8px 11px}
+  #view-dashboard .dashboard-visuals{
+    height:calc(100vh - 90px - 126px - 48px);
+    min-height:0;
+    display:grid;
+    grid-template-columns:1.22fr 1fr 1fr;
+    grid-template-rows:minmax(190px,.95fr) minmax(230px,1.05fr);
+    grid-template-areas:
+      "bottom bottom insights"
+      "wide priority quick";
+    gap:10px;
+  }
+  #view-dashboard .card{margin-bottom:0;padding:12px;border-radius:10px;min-height:0;overflow:hidden}
+  #view-dashboard .card h3{font-size:14px;margin-bottom:9px}
+  #view-dashboard .bottom-grid{grid-area:bottom;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-height:0}
+  #view-dashboard .dashboard-insights{grid-area:insights;display:grid;grid-template-columns:1fr;grid-template-rows:.9fr 1fr 1fr;gap:10px;min-height:0}
+  #view-dashboard .dashboard-wide{grid-area:wide;display:grid;grid-template-columns:1.35fr .65fr;gap:10px;min-height:0}
+  #view-dashboard .card:has(#priorityAlertList){grid-area:priority}
+  #view-dashboard .card:has(#dashboardStatusGrid){grid-area:quick}
+  #view-dashboard .donut-wrap{gap:14px}
+  #view-dashboard .donut{width:92px;height:92px}
+  #view-dashboard .donut:after{inset:22px}
+  #view-dashboard .legend p{margin:6px 0}
+  #view-dashboard .health-gauge{width:92px;height:92px;margin:2px auto 8px}
+  #view-dashboard .health-gauge:after{inset:20px}
+  #view-dashboard .health-gauge span{font-size:20px}
+  #view-dashboard .trend-chart{height:calc(100% - 28px);min-height:120px;padding:8px;gap:3px}
+  #view-dashboard .phase-matrix,
+  #view-dashboard .status-grid,
+  #view-dashboard .priority-list,
+  #view-dashboard .compact-list,
+  #view-dashboard #recentAlerts,
+  #view-dashboard #activityLog{max-height:100%;overflow:auto}
+  #view-dashboard .phase-matrix{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:7px}
+  #view-dashboard .phase-tile{padding:8px}
+  #view-dashboard .phase-tile b{margin-bottom:6px}
+  #view-dashboard .status-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px}
+  #view-dashboard .status-card,
+  #view-dashboard .compact-item,
+  #view-dashboard .priority-item,
+  #view-dashboard .activity .log,
+  #view-dashboard .alert-item{padding:8px;border-radius:8px}
+  #view-dashboard .list-empty{padding:10px}
+}
+
+
+@media(min-width:1201px){
+  #view-dashboard .dashboard-visuals{
+    grid-template-columns:1.15fr 1fr 1fr;
+    grid-template-rows:minmax(170px,.9fr) minmax(210px,1.1fr) minmax(150px,.8fr);
+    grid-template-areas:
+      "bottom bottom health"
+      "wide priority stale"
+      "quick quick top";
+  }
+  #view-dashboard .dashboard-insights{display:contents}
+  #view-dashboard .health-card{grid-area:health}
+  #view-dashboard .card:has(#staleDeviceList){grid-area:stale}
+  #view-dashboard .card:has(#topAlertDevices){grid-area:top}
+  #view-dashboard .dashboard-wide{grid-template-columns:1fr 1fr}
+  #view-dashboard .health-gauge{width:78px;height:78px;margin:0 auto 6px}
+  #view-dashboard .health-gauge:after{inset:17px}
+  #view-dashboard .health-gauge span{font-size:18px}
+  #view-dashboard .health-card small{display:block;line-height:1.35}
+  #view-dashboard .trend-chart{min-height:130px}
+}
