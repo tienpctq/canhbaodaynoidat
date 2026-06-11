@@ -472,7 +472,13 @@ $("closeDetail").onclick = () => {
   renderDetail();
   renderTable();
 };
-$("toggleSidebar").onclick = () => document.querySelector(".sidebar").classList.toggle("open");
+$("toggleSidebar").onclick = () => {
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    document.querySelector(".sidebar").classList.toggle("open");
+  } else {
+    document.body.classList.toggle("sidebar-collapsed");
+  }
+};
 
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button");

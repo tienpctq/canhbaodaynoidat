@@ -33,3 +33,25 @@ tr.selected td{background:#f1f7ff}
 .info-grid small{display:block;color:var(--muted);margin-top:6px}
 a{color:#0d63ce}
 @media(max-width:900px){.filters,.advanced-panel{grid-template-columns:1fr}.pagination{align-items:flex-start;flex-direction:column}.info-grid{grid-template-columns:1fr}}
+
+
+body.sidebar-collapsed .sidebar{transform:translateX(-100%)}
+body.sidebar-collapsed main{margin-left:0}
+.sidebar{transition:transform .22s ease}
+main{transition:margin-left .22s ease}
+.hamburger{min-width:44px;min-height:44px;display:grid;place-items:center}
+@media(max-width:760px){
+  .sidebar{width:min(280px,86vw);overflow-y:auto}
+  .sidebar.open{box-shadow:0 0 0 999px rgba(2,12,32,.42),var(--shadow)}
+  .topbar{height:auto;min-height:72px;padding:12px 16px;align-items:flex-start}
+  .topbar h1{line-height:1.25}
+  .page{padding:14px}
+  .stat{padding:16px}
+  .layout{gap:14px}
+  table{min-width:760px}
+  .detail-panel{max-height:none}
+  .connection,.version{position:static;margin-top:18px}
+}
+@media(min-width:761px){
+  body.sidebar-collapsed .topbar{left:0}
+}
