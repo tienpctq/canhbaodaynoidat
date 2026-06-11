@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EVN SmartEVN - Giám sát dây nối đất</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -128,7 +129,23 @@
     </section>
 
     <section class="page" id="view-devices"><div class="card"><h3>QUẢN LÝ THIẾT BỊ</h3><p>Dữ liệu được đồng bộ realtime từ Firebase path <b>/Device</b>. Mỗi thiết bị dùng key như <b>ID1_001</b> và các trường ESP32: LINE1, LINE2, LINE3, LINEPW, ONLINE, WARNING, ENABLEBUZZ, RST, RESPONSE, SDT, SMS, SEND_INTERVAL, VITRI.</p></div></section>
-    <section class="page" id="view-map"><div class="card"><h3>BẢN ĐỒ THIẾT BỊ</h3><div id="mapList" class="map-placeholder">Thêm LAT/LNG cho từng thiết bị để hiển thị bản đồ thật.</div></div></section>
+    <section class="page" id="view-map">
+      <div class="card">
+        <div class="card-title split">
+          <h3>BẢN ĐỒ THIẾT BỊ</h3>
+          <button id="fitMapMarkers" class="outline">Hiển thị tất cả ghim</button>
+        </div>
+        <div class="map-toolbar">
+          <label>Thiết bị có sẵn<select id="mapDeviceSelect"><option value="">Chọn thiết bị</option></select></label>
+          <label>Vĩ độ LAT<input id="mapLat" type="number" step="0.000001" placeholder="VD: 21.027763"></label>
+          <label>Kinh độ LNG<input id="mapLng" type="number" step="0.000001" placeholder="VD: 105.834160"></label>
+          <button id="saveDeviceLocation" class="primary">Ghim vị trí</button>
+        </div>
+        <p class="note">Có thể chọn thiết bị rồi bấm trực tiếp lên bản đồ để lấy tọa độ, sau đó bấm “Ghim vị trí”.</p>
+        <div id="deviceMap" class="device-map"></div>
+        <div id="mapList" class="map-list"></div>
+      </div>
+    </section>
     <section class="page" id="view-groups"><div class="card"><h3>NHÓM THIẾT BỊ</h3><div id="groupList"></div></div></section>
     <section class="page" id="view-alerts"><div class="card"><h3>DANH SÁCH CẢNH BÁO</h3><div id="alertList"></div></div></section>
     <section class="page" id="view-history"><div class="card"><h3>LỊCH SỬ SỰ KIỆN</h3><div id="historyList"></div></div></section>
@@ -156,6 +173,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

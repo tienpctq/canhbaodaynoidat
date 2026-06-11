@@ -25,6 +25,8 @@ let activeDetailTab = "overview";
 let lastSnapshot = "";
 let currentPage = 1;
 let pageSize = 8;
+let map;
+let mapMarkers = {};
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = () => new Date().toLocaleString("vi-VN");
@@ -306,6 +308,7 @@ function renderLogs() {
 
 function renderLists() {
   const entries = Object.entries(devices);
+  renderMapDeviceSelect(entries);
   $("alertList").innerHTML = entries.filter(([, d]) => hasAlert(d)).map(([id, d]) => `<div class="alert-item"><b>${esc(id)} - ${esc(d.VITRI || "")}</b><small>${esc(fmtAlert(d))}</small></div>`).join("") || '<div class="list-empty">Không có cảnh báo</div>';
 
   const groups = entries.reduce((acc, [id, d]) => {
@@ -316,10 +319,82 @@ function renderLists() {
   $("groupList").innerHTML = Object.entries(groups).map(([group, ids]) => `<p><b>${esc(group)}</b>: ${ids.map(esc).join(", ")}</p>`).join("") || '<div class="list-empty">Chưa có thiết bị</div>';
 
   $("mapList").innerHTML = entries.map(([id, d]) => {
-    const hasLocation = d.LAT && d.LNG;
-    const link = hasLocation ? ` <a target="_blank" href="https://www.google.com/maps?q=${encodeURIComponent(`${d.LAT},${d.LNG}`)}">Mở bản đồ</a>` : "";
-    return `<div class="alert-item"><b>${esc(id)} - ${esc(d.VITRI || "")}</b><small>LAT: ${esc(d.LAT || "chưa có")}, LNG: ${esc(d.LNG || "chưa có")}${link}</small></div>`;
+    const hasLocation = hasValidLocation(d);
+    const link = hasLocation ? ` <a target="_blank" href="https://www.google.com/maps?q=${encodeURIComponent(`${d.LAT},${d.LNG}`)}">Mở Google Maps</a>` : "";
+    const action = hasLocation ? `<button class="action-btn" data-focus-map-id="${esc(id)}">Đến ghim</button>` : "";
+    return `<div class="alert-item"><b>${esc(id)} - ${esc(d.VITRI || "")}</b><small>LAT: ${esc(d.LAT || "chưa có")}, LNG: ${esc(d.LNG || "chưa có")}${link}</small>${action}</div>`;
   }).join("") || "Chưa có thiết bị";
+  renderDeviceMap(entries);
+}
+
+function hasValidLocation(d) {
+  return Number.isFinite(Number(d?.LAT)) && Number.isFinite(Number(d?.LNG));
+}
+
+function renderMapDeviceSelect(entries = Object.entries(devices)) {
+  const select = $("mapDeviceSelect");
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = '<option value="">Chọn thiết bị</option>' + entries
+    .map(([id, d]) => `<option value="${esc(id)}">${esc(id)} - ${esc(d.VITRI || "chưa có vị trí")}</option>`)
+    .join("");
+  select.value = devices[current] ? current : "";
+}
+
+function ensureMap() {
+  if (!$("deviceMap") || !window.L) return null;
+  if (map) return map;
+  map = L.map("deviceMap").setView([16.047079, 108.20623], 5);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+  map.on("click", (event) => {
+    $("mapLat").value = event.latlng.lat.toFixed(6);
+    $("mapLng").value = event.latlng.lng.toFixed(6);
+  });
+  return map;
+}
+
+function renderDeviceMap(entries = Object.entries(devices)) {
+  const currentMap = ensureMap();
+  if (!currentMap) return;
+
+  const activeIds = new Set();
+  entries.forEach(([id, d]) => {
+    if (!hasValidLocation(d)) return;
+    activeIds.add(id);
+    const latLng = [Number(d.LAT), Number(d.LNG)];
+    const popup = `<b>${esc(id)}</b><br>${esc(d.VITRI || "")}<br>${statusBadge(isOnline(d))}<br>${esc(fmtAlert(d))}`;
+    if (!mapMarkers[id]) {
+      mapMarkers[id] = L.marker(latLng).addTo(currentMap);
+    } else {
+      mapMarkers[id].setLatLng(latLng);
+    }
+    mapMarkers[id].bindPopup(popup);
+  });
+
+  Object.entries(mapMarkers).forEach(([id, marker]) => {
+    if (!activeIds.has(id)) {
+      currentMap.removeLayer(marker);
+      delete mapMarkers[id];
+    }
+  });
+
+  setTimeout(() => currentMap.invalidateSize(), 50);
+}
+
+function fitMapToMarkers() {
+  const markers = Object.values(mapMarkers);
+  if (!map || !markers.length) return notify("Chưa có thiết bị nào có tọa độ", "error");
+  map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2));
+}
+
+function focusMapDevice(id) {
+  const marker = mapMarkers[id];
+  if (!map || !marker) return notify("Thiết bị chưa có tọa độ", "error");
+  map.setView(marker.getLatLng(), 15);
+  marker.openPopup();
 }
 
 function fmtAlert(d) {
@@ -428,6 +503,22 @@ $("clearFilters").onclick = () => {
 };
 $("exportDevices").onclick = () => downloadJson(`devices-${Date.now()}.json`, devices);
 $("backupAll").onclick = () => downloadJson(`canhbaodaynoidat-backup-${Date.now()}.json`, { Device: devices, Logs: allLogs() });
+$("fitMapMarkers").onclick = fitMapToMarkers;
+$("mapDeviceSelect").addEventListener("change", () => {
+  const id = $("mapDeviceSelect").value;
+  const d = devices[id];
+  $("mapLat").value = d?.LAT || "";
+  $("mapLng").value = d?.LNG || "";
+  if (id) focusMapDevice(id);
+});
+$("saveDeviceLocation").onclick = () => {
+  const id = $("mapDeviceSelect").value;
+  const lat = Number($("mapLat").value);
+  const lng = Number($("mapLng").value);
+  if (!id) return notify("Chọn thiết bị cần ghim vị trí", "error");
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return notify("Nhập LAT/LNG hợp lệ", "error");
+  writeDevice(id, { LAT: lat, LNG: lng, RESPONSE: 0 }, "Cập nhật tọa độ bản đồ");
+};
 $("addDeviceBtn").onclick = () => $("deviceModal").classList.add("show");
 $("cancelAdd").onclick = () => $("deviceModal").classList.remove("show");
 $("confirmAdd").onclick = async () => {
@@ -493,6 +584,9 @@ document.addEventListener("click", (event) => {
     return renderTable();
   }
 
+  const focusMapId = target.dataset.focusMapId;
+  if (focusMapId) return focusMapDevice(focusMapId);
+
   const detailTab = target.dataset.detailTab;
   if (detailTab) {
     activeDetailTab = detailTab;
@@ -516,6 +610,7 @@ document.addEventListener("click", (event) => {
     target.classList.add("active");
     document.querySelectorAll(".page").forEach((pageEl) => pageEl.classList.remove("active"));
     $(`view-${target.dataset.view}`).classList.add("active");
+    if (target.dataset.view === "map") setTimeout(() => renderDeviceMap(), 80);
     document.querySelector(".sidebar").classList.remove("open");
   }
 });

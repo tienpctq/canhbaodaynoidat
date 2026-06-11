@@ -55,3 +55,11 @@ main{transition:margin-left .22s ease}
 @media(min-width:761px){
   body.sidebar-collapsed .topbar{left:0}
 }
+
+
+.map-toolbar{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:10px}
+.map-toolbar label{font-size:13px;color:var(--muted);font-weight:bold}
+.map-toolbar input,.map-toolbar select{width:100%;margin-top:6px}
+.device-map{height:460px;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:14px 0;background:#eef6ff}
+.map-list .action-btn{margin-top:8px}
+@media(max-width:900px){.map-toolbar{grid-template-columns:1fr}.device-map{height:360px}}
